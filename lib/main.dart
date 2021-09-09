@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -5,7 +6,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Lab2 Kudashkin Aleksey 8K81'),
+      home: MyHomePage(title: 'Lab3 Kudashkin Aleksey 8K81'),
     );
   }
 }
@@ -28,51 +28,38 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  double? _first = 0;
-  double? _second = 0;
-  double? _result = 0;
+  int _buttonsAdded = 0;
+  int _listSize = 0;
+  var _list = <Widget>[];
 
-  void _updateFirst(String value) {
+  void _showSnackBar(int num) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: Duration(milliseconds: 1000),
+      content: Text("Нажата кнопка $num"),
+    ));
+  }
+
+  void _addButton() {
     setState(() {
-      _first = double.tryParse(value);
+      _buttonsAdded++;
+      _listSize++;
+      _list.add(MyButton(
+          id: _buttonsAdded,
+          onPressed: _showSnackBar,
+          buttonText: 'Кнопка №$_buttonsAdded'
+      ));
     });
   }
 
-  void _updateSecond(String value) {
+  void _addElement() {
     setState(() {
-      _second = double.tryParse(value);
-    });
-  }
-
-  void _getSum() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! + _second!;
-    });
-  }
-
-  void _getDifference() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! - _second!;
-    });
-  }
-
-  void _getMultiplication() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! * _second!;
-    });
-  }
-
-  void _getDivision() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = (_first! / _second! * 1000).roundToDouble() / 1000;
+      _listSize++;
+      _list.add(Center(
+        child: Text(
+          'Элемент №${Random().nextInt(1000)}',
+          style: TextStyle(fontSize: 16),
+        ),
+      ));
     });
   }
 
@@ -82,75 +69,65 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Первое число',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateFirst(value);
-                },
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Center(
+              child: OutlinedButton(
+                onPressed: _addElement,
+                style: OutlinedButton.styleFrom(
+                    textStyle: TextStyle(fontSize: 20)),
+                child: Text('Добавить элемент'),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Второе число',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateSecond(value);
-                },
+          ),
+          Divider(),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Text(
+              'Список элементов:',
+              style: TextStyle(fontSize: 24),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+                itemCount: _listSize,
+                itemBuilder: (BuildContext context, int index) {
+                  return _list[index];
+                }),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 48.0),
+            child: Center(
+              child: OutlinedButton(
+                onPressed: _addButton,
+                style: OutlinedButton.styleFrom(
+                    textStyle: TextStyle(fontSize: 20)),
+                child: Text('Добавить кнопку'),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ElevatedButton(
-                onPressed: _getSum,
-                style: ElevatedButton.styleFrom(
-                  textStyle: TextStyle(fontSize: 20),
-                ),
-                child: Text('Сложить'),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: _getDifference,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Вычесть'),
-            ),
-            ElevatedButton(
-              onPressed: _getMultiplication,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Умножить'),
-            ),
-            ElevatedButton(
-              onPressed: _getDivision,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Разделить'),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                'Результат операции: $_result',
-                style: Theme.of(context).textTheme.headline5,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class MyButton extends StatelessWidget {
+  final int id;
+  final Function(int) onPressed;
+  final String buttonText;
+
+  const MyButton(
+      {required this.id, required this.onPressed, required this.buttonText});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+        onPressed: () => {onPressed(this.id)},
+        child: new Text(this.buttonText)
     );
   }
 }
