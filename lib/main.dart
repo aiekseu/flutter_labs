@@ -5,7 +5,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,9 +13,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Lab2 Kudashkin Aleksey 8K81'),
+      home: MyHomePage(title: 'Lab4 Kudashkin Aleksey 8K81'),
     );
   }
+}
+
+class Product {
+  final String name, type;
+  final double price, weight;
+
+  Product(this.name, this.type, this.price, this.weight);
 }
 
 class MyHomePage extends StatefulWidget {
@@ -28,52 +34,30 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  double? _first = 0;
-  double? _second = 0;
-  double? _result = 0;
+  List<Product> _products = <Product>[];
+  int _productsCount = 0;
 
-  void _updateFirst(String value) {
-    setState(() {
-      _first = double.tryParse(value);
-    });
+  @override
+  void initState() {
+    _products.add(new Product('Яблоко', 'Фрукт', 30, 0.2));
+    _products.add(new Product('Iphone 12', 'Смартфон', 72000, 0.162));
+    _products.add(new Product('Lada Granta', 'Автомобиль', 764500, 1185));
+    _productsCount += 3;
+    super.initState();
   }
 
-  void _updateSecond(String value) {
-    setState(() {
-      _second = double.tryParse(value);
-    });
-  }
+  void _addNewProduct(BuildContext context) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddProduct()),
+    );
 
-  void _getSum() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! + _second!;
-    });
-  }
-
-  void _getDifference() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! - _second!;
-    });
-  }
-
-  void _getMultiplication() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! * _second!;
-    });
-  }
-
-  void _getDivision() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = (_first! / _second! * 1000).roundToDouble() / 1000;
-    });
+    if (result != null) {
+      setState(() {
+        _productsCount++;
+        _products.add(result);
+      });
+    }
   }
 
   @override
@@ -82,71 +66,123 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
+      body: ListView.builder(
+        itemCount: _productsCount,
+        itemBuilder: (BuildContext context, int index) {
+          return Card(
+            child: ListTile(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_products[index].name,
+                      style:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    '${_products[index].price.toString()} руб.',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  )
+                ],
+              ),
+              subtitle: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_products[index].type),
+                  Text('${_products[index].weight.toString()} кг')
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        label: const Text('Добавить продукт', style: TextStyle(fontSize: 16),),
+        icon: const Icon(Icons.plus_one),
+        backgroundColor: Colors.pink,
+        onPressed: () => {_addNewProduct(context)},
+      ),
+    );
+  }
+}
+
+class AddProduct extends StatefulWidget {
+  const AddProduct({Key? key}) : super(key: key);
+
+  @override
+  _AddProductState createState() => _AddProductState();
+}
+
+class _AddProductState extends State<AddProduct> {
+  String _pName = '', _pType = '';
+  double _pPrice = 0, _pWeight = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Добавить новый продукт'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Назад',
+          onPressed: () {
+            Navigator.pop(context, null);
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.done),
+            tooltip: 'Добавить продукт',
+            onPressed: () {
+              Navigator.pop(
+                  context, new Product(_pName, _pType, _pPrice, _pWeight));
+            },
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Первое число',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateFirst(value);
-                },
+          children: [
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Название',
               ),
+              onChanged: (String value) {
+                setState(() {
+                  _pName = value;
+                });
+              },
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Второе число',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateSecond(value);
-                },
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Тип',
               ),
+              onChanged: (String value) {
+                setState(() {
+                  _pType = value;
+                });
+              },
             ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ElevatedButton(
-                onPressed: _getSum,
-                style: ElevatedButton.styleFrom(
-                  textStyle: TextStyle(fontSize: 20),
-                ),
-                child: Text('Сложить'),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Масса',
               ),
+              keyboardType: TextInputType.number,
+              onChanged: (String value) {
+                setState(() {
+                  _pWeight = double.parse(value);
+                });
+              },
             ),
-            ElevatedButton(
-              onPressed: _getDifference,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Цена',
               ),
-              child: Text('Вычесть'),
-            ),
-            ElevatedButton(
-              onPressed: _getMultiplication,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Умножить'),
-            ),
-            ElevatedButton(
-              onPressed: _getDivision,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Разделить'),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                'Результат операции: $_result',
-                style: Theme.of(context).textTheme.headline5,
-              ),
+              keyboardType: TextInputType.number,
+              onChanged: (String value) {
+                setState(() {
+                  _pPrice = double.parse(value);
+                });
+              },
             ),
           ],
         ),
