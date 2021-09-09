@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -5,7 +6,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Lab2 Kudashkin Aleksey 8K81'),
+      home: MyHomePage(title: 'Lab4 Kudashkin Aleksey 8K81'),
     );
   }
 }
@@ -28,53 +28,89 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  double? _first = 0;
-  double? _second = 0;
-  double? _result = 0;
 
-  void _updateFirst(String value) {
+  String _expression = '', _mathAction = '';
+  int _firstNum = 0, _secondNum = 0, _answersRight = 0, _rightPos = 0, _answersGeneral = 0, _rightAnswer = 0;
+  double _rightCoefficient = 1;
+  List<int> _answers = List<int>.filled(4, 0);
+  bool _isRight = false, _isAnswered = false;
+
+  Random random = new Random();
+
+  @override
+  void initState() {
+    _generateExpression();
+    _generateAnswers();
+    super.initState();
+  }
+
+  void _generateExpression() {
     setState(() {
-      _first = double.tryParse(value);
+      _answersGeneral++;
+      _rightCoefficient = (_answersRight / _answersGeneral == 0) ? 0.1 : _answersRight / _answersGeneral;
+
+      _firstNum = random.nextInt(25) + random.nextInt((_rightCoefficient * 2 *_answersGeneral + 1).round());
+      _secondNum = random.nextInt(25) + random.nextInt((_rightCoefficient * 2 * _answersGeneral + 1).round());
+
+      int temp = random.nextInt(3);
+      switch (temp) {
+        case 0: {
+          _mathAction = '*';
+          _firstNum = (_firstNum / 3).round() + random.nextInt(5);
+          _secondNum = (_secondNum / 3).round() + random.nextInt(5);
+          _rightAnswer = _firstNum * _secondNum;
+          break;
+        }
+        case 1: {
+          _mathAction = '+';
+          _rightAnswer = _firstNum + _secondNum;
+          break;
+        }
+        case 2: {
+          _mathAction = '-';
+          _rightAnswer = _firstNum - _secondNum;
+          break;
+        }
+      }
+
+      _expression = '$_firstNum $_mathAction $_secondNum = ?';
     });
   }
 
-  void _updateSecond(String value) {
+  void _generateAnswers() {
     setState(() {
-      _second = double.tryParse(value);
+      _rightPos = random.nextInt(4);
+      _answers[_rightPos] = _rightAnswer;
+      for (int i = 0; i < 4; i++) {
+        if (i != _rightPos)
+        {
+          _answers[i] = _rightAnswer + random.nextInt(20) - 10;
+          if (_answers[i] == _rightAnswer)
+            _answers[i] = _rightAnswer - 1;
+        }
+      }
     });
   }
 
-  void _getSum() {
+  void _checkAnswer(int index) {
     setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! + _second!;
+      _isAnswered = true;
+      if (index == _rightPos) {
+        _answersRight++;
+        _isRight = true;
+      }
     });
   }
 
-  void _getDifference() {
+  void _nextExpression() {
     setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! - _second!;
+      _isAnswered = false;
+      _isRight = false;
+      _generateExpression();
+      _generateAnswers();
     });
   }
 
-  void _getMultiplication() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! * _second!;
-    });
-  }
-
-  void _getDivision() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = (_first! / _second! * 1000).roundToDouble() / 1000;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,74 +118,79 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Первое число',
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Center(
+              child: Text('Выражение:', style: TextStyle(fontSize: 20),),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Center(
+              child: Text(_expression, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),),
+            ),
+          ),
+          Divider(),
+          Column(
+            children: [
+              Card(
+                child: ListTile(
+                  title: Text('${_answers[0]}'),
+                  onTap: () => _checkAnswer(0),
                 ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateFirst(value);
-                },
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Второе число',
+              Card(
+                child: ListTile(
+                  title: Text('${_answers[1]}'),
+                  onTap: () => _checkAnswer(1),
                 ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateSecond(value);
-                },
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ElevatedButton(
-                onPressed: _getSum,
-                style: ElevatedButton.styleFrom(
-                  textStyle: TextStyle(fontSize: 20),
+              Card(
+                child: ListTile(
+                  title: Text('${_answers[2]}'),
+                  onTap: () => _checkAnswer(2),
                 ),
-                child: Text('Сложить'),
+              ),
+              Card(
+                child: ListTile(
+                  title: Text('${_answers[3]}'),
+                  onTap: () => _checkAnswer(3),
+                ),
+              )
+            ],
+          ),
+          Expanded(
+            child: Container(
+              child: Visibility(
+                  visible: _isAnswered,
+                  child: _isRight
+                      ? Column(
+                    children: [
+                      Icon(Icons.check_circle, size: 128, color: Colors.green,),
+                      Text('Верно!', style: TextStyle(fontSize: 24, color: Colors.green),)
+                    ],
+                  )
+                      : Column(
+                    children: [
+                      Icon(Icons.close, size: 128, color: Colors.redAccent,),
+                      Text('Неверно!', style: TextStyle(fontSize: 24, color: Colors.redAccent),)
+                    ],
+                  )
               ),
             ),
-            ElevatedButton(
-              onPressed: _getDifference,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Вычесть'),
+          ),
+          Text('Правильных ответов: $_answersRight / $_answersGeneral', style: TextStyle(fontSize: 16),),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 28.0),
+            child: OutlinedButton(
+              onPressed: _nextExpression,
+              child: Text('Следующее выражение', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w300),),
             ),
-            ElevatedButton(
-              onPressed: _getMultiplication,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Умножить'),
-            ),
-            ElevatedButton(
-              onPressed: _getDivision,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Разделить'),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                'Результат операции: $_result',
-                style: Theme.of(context).textTheme.headline5,
-              ),
-            ),
-          ],
-        ),
+          )
+        ],
       ),
     );
   }
