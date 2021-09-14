@@ -1,32 +1,13 @@
-import 'dart:io';
-import 'dart:math';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:geolocator/geolocator.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  final database = openDatabase(
-    join(await getDatabasesPath(), 'products_database.db'),
-    onCreate: (db, version) {
-      return db.execute(
-        'CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT, type TEXT, imagePath TEXT, price REAL, weight REAL)',
-      );
-    },
-    version: 1,
-  );
-
-  runApp(MyApp(database: database,));
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-
-  final database;
-
-  MyApp({required this.database});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -35,222 +16,206 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(
-        title: 'Lab6 Kudashkin Aleksey 8K81', database: database,),
+      home: MyHomePage(title: 'Lab7 Kudashkin Aleksey 8K81'),
     );
   }
 }
 
-class Product {
-  final String name, type, imagePath;
-  final double price, weight;
-  final int id;
-
-  Product(
-      {required this.id, required this.name, required this.type, required this.price, required this.weight, required this.imagePath});
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'type': type,
-      'imagePath': imagePath,
-      'price': price,
-      'weight': weight
-    };
-  }
-}
-
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, required this.title, required this.database})
-      : super(key: key);
+  MyHomePage({Key? key, required this.title}) : super(key: key);
   final String title;
-  final database;
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Product> _products = <Product>[];
-  var loadedProducts;
-  int _productsCount = 0;
+  late var _currentLocation;
+  late StreamSubscription<Position> _positionStream;
+
+  List<MyPlace> _checkpoints = [
+    new MyPlace(name: 'ГК ТПУ', coords: '56.4654, 84.9502'),
+    new MyPlace(name: 'Дом', coords: '53.9060, 87.1285'),
+  ];
+
+  void initStream() {
+    _positionStream = Geolocator.getPositionStream(
+            desiredAccuracy: LocationAccuracy.high, distanceFilter: 5)
+        .listen((Position position) {
+      setState(() {
+        _currentLocation = (position.latitude.toString() +
+            ', ' +
+            position.longitude.toString());
+      });
+
+      double distanceBetween = 0;
+
+      for (var i = 0; i < _checkpoints.length; ++i) {
+        if (!_checkpoints[i].isChecked) continue;
+        distanceBetween = Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            getLatLng(_checkpoints[i].coords)[0],
+            getLatLng(_checkpoints[i].coords)[1]).roundToDouble();
+
+
+          print('До ${_checkpoints[i].name} осталось $distanceBetween метров!');
+        if (distanceBetween < 100) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: Duration(seconds: 3),
+              content: Text('До ${_checkpoints[i].name} осталось $distanceBetween метров!'),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void disposeStream() {
+    _positionStream.cancel();
+  }
+
+  List<CheckboxListTile> _getList() {
+    var tempList = <CheckboxListTile>[];
+    for (var i = 0; i < _checkpoints.length; ++i) {
+      tempList.add(new CheckboxListTile(
+        title: Text(_checkpoints[i].name),
+        subtitle: Text(_checkpoints[i].coords),
+        value: _checkpoints[i].isChecked,
+        onChanged: (bool? value) {
+          setState(() {
+            _checkpoints[i].isChecked = value ?? false;
+          });
+        },
+        secondary: Icon(Icons.place),
+      ));
+    }
+    return tempList;
+  }
 
   @override
   void initState() {
-    Future.delayed(Duration(seconds: 1),() async {
-      loadedProducts = getProducts();
+    Future.delayed(Duration(seconds: 1), () async {
+      bool serviceEnabled;
+      LocationPermission permission;
+
+      // Включены ли службы Геолокации
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Location services are disabled.');
+      }
+
+      // Получены ли разрешения от пользователя
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('Location permissions are denied');
+        }
+      }
+
+      // Если пользователь навсегда запретил приложению использовать службы
+      if (permission == LocationPermission.deniedForever) {
+        print(
+            'Location permissions are permanently denied, we cannot request permissions.');
+      }
+
+      print('Location services are enabled');
     });
+
+    initStream();
     super.initState();
   }
 
-  Future<List<Product>> getProducts() async {
-    final db = await widget.database;
-    final List<Map<String, dynamic>> maps = await db.query('products');
-
-    var temp = List.generate(maps.length, (i) {
-      return Product(
-          id: maps[i]['id'],
-          name: maps[i]['name'],
-          type: maps[i]['type'],
-          imagePath: maps[i]['imagePath'],
-          price: maps[i]['price'],
-          weight: maps[i]['weight']
-      );
-    });
-
-    setState(() {
-      _products = temp;
-      _productsCount = _products.length;
-    });
-
-    return temp;
-  }
-
-  Future<void> insertProductToDb(Product product) async {
-    final db = await widget.database;
-
-    await db.insert(
-      'products',
-      product.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  Future<void> deleteProductFromDb(int id) async {
-    final db = await widget.database;
-
-    await db.delete(
-      'products',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  void _deleteProduct(int index) {
-    deleteProductFromDb(_products[index].id);
-    setState(() {
-      _products.removeAt(index);
-      _productsCount--;
-    });
-  }
-
-  void _addNewProduct(BuildContext context) async {
+  void _addNewPlacemark(BuildContext context) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddProduct()),
+      MaterialPageRoute(builder: (context) => const NewPlacemark()),
     );
 
     if (result != null) {
       setState(() {
-        _productsCount++;
-        _products.add(result);
-        insertProductToDb(result);
+        _checkpoints.add(result);
       });
     }
   }
 
+  List<double> getLatLng(String string) {
+    List<double> tempDoubleList = <double>[];
+    var tempStrList = string.split(', ');
+    tempDoubleList.add(double.parse(tempStrList[0]));
+    tempDoubleList.add(double.parse(tempStrList[1]));
+    return tempDoubleList;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: FutureBuilder(
-          future: loadedProducts,
-          builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if (!snapshot.hasData) {
-              return Center(
-                child: CircularProgressIndicator(
-                    backgroundColor: Colors.red,
-                    valueColor: new AlwaysStoppedAnimation<Color>(Colors.blue)),);
-              } else {
-              return ListView.builder(
-                itemCount: _productsCount,
-                itemBuilder: (BuildContext context, int index) {
-                  return Dismissible(
-                    key: Key((_products[index].id).toString()),
-                    onDismissed: (direction) {_deleteProduct(index);},
-                    background: Container(color: Colors.red),
-                    child: Card(
-                      child: ListTile(
-                        leading: Image.file(
-                          File(_products[index].imagePath),
-                          fit: BoxFit.fitWidth,
-                          height: 100,
-                          width: 140,
-                        ),
-                        title: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_products[index].name,
-                                style:
-                                TextStyle(fontSize: 18,
-                                    fontWeight: FontWeight.bold)),
-                            Text(
-                              '${_products[index].price.toString()} руб.',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight
-                                  .bold),
-                            )
-                          ],
-                        ),
-                        subtitle: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_products[index].type),
-                            Text('${_products[index].weight.toString()} кг')
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            }
-          }
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        label: const Text(
-          'Добавить продукт',
-          style: TextStyle(fontSize: 16),
+        appBar: AppBar(
+          title: Text(widget.title),
         ),
-        icon: const Icon(Icons.plus_one),
-        backgroundColor: Colors.pink,
-        onPressed: () => {_addNewProduct(context)},
-      ),
-    );
+        floatingActionButton: FloatingActionButton.extended(
+          label: const Text(
+            'Добавить метку',
+            style: TextStyle(fontSize: 16),
+          ),
+          icon: const Icon(Icons.map),
+          backgroundColor: Colors.pink,
+          onPressed: () => {_addNewPlacemark(context)},
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: Center(
+                child: Column(
+                  children: [
+                    Text('Текущее местоположение:',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w300)),
+                    Text(_currentLocation.toString(),
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+            Divider(),
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'Выберите метки',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: _getList(),
+              ),
+            )
+          ],
+        ));
   }
 }
 
-class AddProduct extends StatefulWidget {
-  const AddProduct({Key? key}) : super(key: key);
+class NewPlacemark extends StatefulWidget {
+  const NewPlacemark({Key? key}) : super(key: key);
 
   @override
-  _AddProductState createState() => _AddProductState();
+  _NewPlacemarkState createState() => _NewPlacemarkState();
 }
 
-class _AddProductState extends State<AddProduct> {
-  String _pName = '',
-      _pType = '';
-  double _pPrice = 0,
-      _pWeight = 0;
-  XFile? _photo;
-
-  Future<void> _takePhoto() async {
-    final ImagePicker _picker = ImagePicker();
-    final photo = await _picker.pickImage(
-        source: ImageSource.camera, maxHeight: 280, maxWidth: 200);
-    setState(() {
-      _photo = photo;
-    });
-  }
+class _NewPlacemarkState extends State<NewPlacemark> {
+  String _name = '';
+  String _coords = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Добавить новый продукт'),
+        title: Text('Добавить новую метку'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Назад',
@@ -263,13 +228,7 @@ class _AddProductState extends State<AddProduct> {
             icon: const Icon(Icons.done),
             tooltip: 'Добавить продукт',
             onPressed: () {
-              Navigator.pop(context,
-                  new Product(name: _pName,
-                      type: _pType,
-                      price: _pPrice,
-                      weight: _pWeight,
-                      imagePath: _photo!.path,
-                      id: Random().nextInt(10000)));
+              Navigator.pop(context, new MyPlace(name: _name, coords: _coords));
             },
           ),
         ],
@@ -280,54 +239,35 @@ class _AddProductState extends State<AddProduct> {
           children: [
             TextField(
               decoration: InputDecoration(
-                labelText: 'Название',
+                labelText: 'Название места',
               ),
               onChanged: (String value) {
                 setState(() {
-                  _pName = value;
+                  _name = value;
                 });
               },
             ),
             TextField(
               decoration: InputDecoration(
-                labelText: 'Тип',
+                labelText: 'Координаты',
               ),
               onChanged: (String value) {
                 setState(() {
-                  _pType = value;
+                  _coords = value;
                 });
               },
             ),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Масса',
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (String value) {
-                setState(() {
-                  _pWeight = double.parse(value);
-                });
-              },
-            ),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Цена',
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (String value) {
-                setState(() {
-                  _pPrice = double.parse(value);
-                });
-              },
-            ),
-            Text('Фото:'),
-            _photo == null
-                ? Text('Image is not loaded')
-                : Image.file(File(_photo!.path)),
-            ElevatedButton(onPressed: _takePhoto, child: Text('Добавить фото')),
           ],
         ),
       ),
     );
   }
+}
+
+class MyPlace {
+  final String name;
+  final String coords;
+  bool isChecked = false;
+
+  MyPlace({required this.name, required this.coords});
 }
