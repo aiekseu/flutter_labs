@@ -1,5 +1,7 @@
-import 'dart:math';
-import 'package:flutter/cupertino.dart';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 void main() {
@@ -15,7 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Lab8 Kudashkin Aleksey 8K81'),
+      home: MyHomePage(title: 'Lab9 Kudashkin Aleksey 8K81'),
     );
   }
 }
@@ -29,401 +31,276 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _expression = '', _mathAction = '+';
-  int _firstNum = 0,
-      _secondNum = 0,
-      _answersRight = 0,
-      _rightPos = 0,
-      _answersGeneral = 0,
-      _rightAnswer = 0;
-  double _rightCoefficient = 1;
-  List<int> _answers = List<int>.filled(4, 0);
-  bool _isRight = false, _isAnswered = false;
-
-  Random random = new Random();
-
-  @override
-  void initState() {
-    _generateExpression();
-    _generateAnswers();
-    super.initState();
-  }
-
-  void _generateExpression() {
-    setState(() {
-      _answersGeneral++;
-      _rightCoefficient = (_answersRight / _answersGeneral == 0)
-          ? 0.1
-          : _answersRight / _answersGeneral;
-
-      _firstNum = random.nextInt(25) +
-          random.nextInt((_rightCoefficient * 2 * _answersGeneral + 1).round());
-      _secondNum = random.nextInt(25) +
-          random.nextInt((_rightCoefficient * 2 * _answersGeneral + 1).round());
-
-      switch (_mathAction) {
-        case '*':
-          {
-            _firstNum = (_firstNum / 3).round() + random.nextInt(5);
-            _secondNum = (_secondNum / 3).round() + random.nextInt(5);
-            _rightAnswer = _firstNum * _secondNum;
-            break;
-          }
-        case '+':
-          {
-            _rightAnswer = _firstNum + _secondNum;
-            break;
-          }
-        case '-':
-          {
-            _rightAnswer = _firstNum - _secondNum;
-            break;
-          }
-      }
-
-      _expression = '$_firstNum $_mathAction $_secondNum = ?';
-    });
-  }
-
-  void _generateAnswers() {
-    setState(() {
-      _rightPos = random.nextInt(4);
-      _answers[_rightPos] = _rightAnswer;
-      for (int i = 0; i < 4; i++) {
-        if (i != _rightPos) {
-          _answers[i] = _rightAnswer + random.nextInt(20) - 10;
-          if (_answers[i] == _rightAnswer) _answers[i] = _rightAnswer - 1;
-        }
-      }
-    });
-  }
-
-  void _checkAnswer(int index) {
-    setState(() {
-      _isAnswered = true;
-      if (index == _rightPos) {
-        _answersRight++;
-        _isRight = true;
-      }
-    });
-  }
-
-  void _nextExpression() {
-    setState(() {
-      _isAnswered = false;
-      _isRight = false;
-      _generateExpression();
-      _generateAnswers();
-    });
-  }
-
-  void _changeAction() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const PickMathActionPage()),
-    );
-
-    if (result != null) {
-      setState(() {
-        _mathAction = result;
-      });
-      _nextExpression();
-    }
-  }
-
-  void _changeActionTo(String action) {
-    setState(() {
-      _mathAction = action;
-    });
-    _nextExpression();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          return Row(
-            children: [
-              (orientation == Orientation.landscape)
-                  ? Expanded(
-                      flex: 1,
-                      child: Column(
-                        children: [
-                          ListTile(
-                            title: Text('Сложение'),
-                            leading: Icon(Icons.plus_one),
-                            onTap: () {
-                              _changeActionTo('+');
-                            },
-                          ),
-                          ListTile(
-                            title: Text('Вычитание'),
-                            leading: Icon(Icons.exposure_minus_1),
-                            onTap: () {
-                              _changeActionTo('-');
-                            },
-                          ),
-                          ListTile(
-                            title: Text('Умножение'),
-                            leading: Icon(Icons.two_k),
-                            onTap: () {
-                              _changeActionTo('*');
-                            },
-                          ),
-                        ],
-                      ),
-                    )
-                  : Container(),
-              Expanded(
-                flex: 3,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: (orientation == Orientation.portrait)
-                          ? EdgeInsets.only(top: 16.0)
-                          : EdgeInsets.only(top: 4.0),
-                      child: Center(
-                        child: Text(
-                          'Выражение:',
-                          style: (orientation == Orientation.portrait)
-                              ? TextStyle(fontSize: 20)
-                              : TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    (orientation == Orientation.portrait)
-                        ? Tooltip(
-                            message:
-                                'Нажмите на выражение для смены арифметического действия',
-                            decoration: BoxDecoration(
-                                color: Colors.grey,
-                                borderRadius: BorderRadius.circular(15)),
-                            margin: EdgeInsets.symmetric(horizontal: 24),
-                            textStyle:
-                                TextStyle(fontSize: 16, color: Colors.white),
-                            child: InkWell(
-                              onTap: _changeAction,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 16.0),
-                                child: Center(
-                                  child: Text(
-                                    _expression,
-                                    style: TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        : Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Center(
-                              child: Text(
-                                _expression,
-                                style: TextStyle(
-                                    fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                    Divider(),
-                    (orientation == Orientation.portrait)
-                        ? Column(
-                            children: answersVariants,
-                          )
-                        : Row(children: answersVariants),
-                    Expanded(
-                      child: Container(
-                        child: Visibility(
-                            visible: _isAnswered,
-                            child: _isRight
-                                ? Column(
-                                    children: [
-                                      (orientation == Orientation.portrait)
-                                          ? Icon(
-                                              Icons.check_circle,
-                                              size: 128,
-                                              color: Colors.green,
-                                            )
-                                          : Container(),
-                                      Text(
-                                        'Верно!',
-                                        style: TextStyle(
-                                            fontSize: 24, color: Colors.green),
-                                      )
-                                    ],
-                                  )
-                                : Column(
-                                    children: [
-                                      (orientation == Orientation.portrait)
-                                          ? Icon(
-                                              Icons.close,
-                                              size: 128,
-                                              color: Colors.redAccent,
-                                            )
-                                          : Container(),
-                                      Text(
-                                        'Неверно!',
-                                        style: TextStyle(
-                                            fontSize: 24,
-                                            color: Colors.redAccent),
-                                      )
-                                    ],
-                                  )),
-                      ),
-                    ),
-                    Text(
-                      'Правильных ответов: $_answersRight / $_answersGeneral',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 28.0),
-                      child: OutlinedButton(
-                        onPressed: _nextExpression,
-                        child: Text(
-                          'Следующее выражение',
-                          style: TextStyle(
-                              fontSize: 26, fontWeight: FontWeight.w300),
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  List<Widget> get answersVariants {
-    bool isPortair =
-        (MediaQuery.of(context).orientation == Orientation.portrait);
-
-    return isPortair
-        ? [
-            Card(
-              child: ListTile(
-                title: Text('${_answers[0]}'),
-                onTap: () => _checkAnswer(0),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                title: Text('${_answers[1]}'),
-                onTap: () => _checkAnswer(1),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                title: Text('${_answers[2]}'),
-                onTap: () => _checkAnswer(2),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                title: Text('${_answers[3]}'),
-                onTap: () => _checkAnswer(3),
-              ),
-            )
-          ]
-        : [
-            Expanded(
-              child: Card(
-                child: ListTile(
-                  title: Text('${_answers[0]}'),
-                  onTap: () => _checkAnswer(0),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Card(
-                child: ListTile(
-                  title: Text('${_answers[1]}'),
-                  onTap: () => _checkAnswer(1),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Card(
-                child: ListTile(
-                  title: Text('${_answers[2]}'),
-                  onTap: () => _checkAnswer(2),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Card(
-                child: ListTile(
-                  title: Text('${_answers[3]}'),
-                  onTap: () => _checkAnswer(3),
-                ),
-              ),
-            )
-          ];
-  }
-}
-
-class PickMathAction extends StatelessWidget {
-  const PickMathAction({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            ListTile(
-              title: Text('Сложение'),
-              leading: Icon(Icons.plus_one),
-              onTap: () {
-                Navigator.pop(context, '+');
-              },
-            ),
-            ListTile(
-              title: Text('Вычитание'),
-              leading: Icon(Icons.exposure_minus_1),
-              onTap: () {
-                Navigator.pop(context, '-');
-              },
-            ),
-            ListTile(
-              title: Text('Умножение'),
-              leading: Icon(Icons.two_k),
-              onTap: () {
-                Navigator.pop(context, '*');
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class PickMathActionPage extends StatelessWidget {
-  const PickMathActionPage({Key? key}) : super(key: key);
+  String _query = '', _tempQuery = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Выбрать математическое действие'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            tooltip: 'Назад',
-            onPressed: () {
-              Navigator.pop(context, null);
-            },
+          title: Text(widget.title),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search in all GitHub...',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (String value) {
+                        setState(() {
+                          _tempQuery = value;
+                        });
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.search_rounded,
+                      color: Colors.black54,
+                    ),
+                    iconSize: 36,
+                    onPressed: () {
+                      setState(() {
+                        _query = _tempQuery;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Divider(),
+            if (_query != '')
+              FutureBuilder<List<GitHubRepository>>(
+                future: fetchRepositories(http.Client(), _query),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    print(snapshot.error);
+                    return const Center(
+                      child: Text('An error has occurred!'),
+                    );
+                  } else if (snapshot.hasData) {
+                    return snapshot.data!.length != 0
+                        ? RepositoriesList(repositories: snapshot.data!)
+                        : Center(
+                            child: Text('Ничего не найдено'),
+                          );
+                  } else {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                },
+              ),
+          ],
+        ));
+  }
+}
+
+class RepositoriesList extends StatelessWidget {
+  const RepositoriesList({Key? key, required this.repositories})
+      : super(key: key);
+
+  final List<GitHubRepository> repositories;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: ListView.separated(
+        separatorBuilder: (context, index) => Divider(),
+        itemCount: repositories.length,
+        itemBuilder: (context, index) => ListTile(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(repositories[index].fullName, softWrap: true,),
+              Text(
+                repositories[index].language,
+                style: TextStyle(fontWeight: FontWeight.w400),
+              )
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(repositories[index].description),
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.star),
+                    Text(
+                      '${repositories[index].starsCount} stars     ',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    Icon(Icons.circle_outlined),
+                    Text('${repositories[index].issuesCount} issues',
+                        style: TextStyle(fontWeight: FontWeight.w500))
+                  ],
+                ),
+              )
+            ],
+          ),
+          onTap: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => AboutRepositoryPage(
+                          repository: repositories[index],
+                        )));
+          },
+        ),
+      ),
+    );
+  }
+}
+
+Future<List<GitHubRepository>> fetchRepositories(
+    http.Client client, String searchValue) async {
+  final response = await client.get(
+      Uri.parse('https://api.github.com/search/repositories?q=$searchValue'));
+
+  return compute(parseRepositories, response.body);
+}
+
+List<GitHubRepository> parseRepositories(String responseBody) {
+  final parsed = jsonDecode(responseBody)['items'];
+
+  return parsed
+      .map<GitHubRepository>(
+          (json) => GitHubRepository.fromJson(json.cast<String, dynamic>()))
+      .toList();
+}
+
+class AboutRepository extends StatelessWidget {
+  const AboutRepository({Key? key, required  this.repository})
+      : super(key: key);
+
+  final GitHubRepository repository;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 16.0),
+          child: Center(
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(repository.ownerAvatarUrl),
+                radius: 36,
+              )),
+        ),
+        Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text(
+              '${repository.ownerLogin}',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w400),
+            )),
+        Padding(
+          padding: const EdgeInsets.only(top: 22.0),
+          child: Text(repository.fullName, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),),
+        ),
+        Text.rich(
+          TextSpan(
+            style: TextStyle(fontWeight: FontWeight.w400),
+            children: <InlineSpan>[
+              WidgetSpan(
+                child: Icon(Icons.star),
+              ),
+              TextSpan(text: '${repository.starsCount} stars'),
+              WidgetSpan(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 20.0),
+                  child: Icon(Icons.download),
+                ),
+              ),
+              TextSpan(text: '${repository.forksCount} forks'),
+              WidgetSpan(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 20.0, right: 2),
+                  child: Icon(Icons.circle_outlined),
+                ),
+              ),
+              TextSpan(text: '${repository.issuesCount} issues'),
+            ],
           ),
         ),
-        body: PickMathAction());
+        Padding(
+          padding: const EdgeInsets.only(top: 20.0, bottom: 4),
+          child: Text('DESCRIPTION.md', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Text(repository.description, maxLines: 3,),
+        )
+      ],
+    );
+  }
+}
+
+class AboutRepositoryPage extends StatelessWidget {
+  const AboutRepositoryPage({Key? key, required this.repository})
+      : super(key: key);
+
+  final GitHubRepository repository;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${repository.fullName}'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Назад',
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: AboutRepository(repository: repository,)
+    );
+  }
+}
+
+class GitHubRepository {
+  final String name,
+      fullName,
+      htmlUrl,
+      description,
+      language,
+      ownerLogin,
+      ownerAvatarUrl;
+  final int issuesCount, starsCount, forksCount;
+
+  GitHubRepository(
+      {required this.name,
+      required this.fullName,
+      required this.htmlUrl,
+      required this.description,
+      required this.ownerLogin,
+      required this.ownerAvatarUrl,
+      required this.issuesCount,
+      required this.starsCount,
+      required this.forksCount,
+      required this.language});
+
+  factory GitHubRepository.fromJson(Map<String, dynamic> json) {
+    return GitHubRepository(
+        name: json['name'] ?? 'shit',
+        fullName: json['full_name'] ?? 'shit',
+        htmlUrl: json['html_url'] ?? 'shit',
+        description: json['description'] ?? '',
+        ownerLogin: json['owner'].cast<String, dynamic>()['login'] ?? 'shit',
+        ownerAvatarUrl:
+            json['owner'].cast<String, dynamic>()['avatar_url'] ?? 'shit',
+        issuesCount: json['size'] ?? 'shit',
+        starsCount: json['stargazers_count'] ?? 'shit',
+        forksCount: json['forks_count'] ?? 'shit',
+        language: json['language'] ?? 'shit');
   }
 }
