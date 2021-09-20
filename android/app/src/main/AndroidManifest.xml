@@ -3,6 +3,7 @@
    <application
         android:label="tpu_android_labs"
         android:icon="@mipmap/ic_launcher">
+       <service android:name=".TimeService" />
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
@@ -37,5 +38,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
     </application>
 </manifest>
