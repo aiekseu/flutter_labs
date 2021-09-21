@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Lab2 Kudashkin Aleksey 8K81'),
+      home: MyHomePage(title: 'Lab11 Kudashkin Aleksey 8K81'),
     );
   }
 }
@@ -27,53 +27,40 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  double? _first = 0;
-  double? _second = 0;
-  double? _result = 0;
+class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
+  double _size = 100;
 
-  void _updateFirst(String value) {
-    setState(() {
-      _first = double.tryParse(value);
-    });
+  late Animation<double> animation;
+  late AnimationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 5),
+    );
+    Tween<double> _movingTween = Tween(begin: -math.pi, end: math.pi);
+    animation = _movingTween.animate(controller)
+      ..addListener(() {
+        setState(() {});
+      })
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          controller.repeat();
+        } else if (status == AnimationStatus.dismissed) {
+          controller.forward();
+        }
+      });
+    controller.forward();
+
   }
 
-  void _updateSecond(String value) {
-    setState(() {
-      _second = double.tryParse(value);
-    });
-  }
-
-  void _getSum() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! + _second!;
-    });
-  }
-
-  void _getDifference() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! - _second!;
-    });
-  }
-
-  void _getMultiplication() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = _first! * _second!;
-    });
-  }
-
-  void _getDivision() {
-    setState(() {
-      if (_first!.isNaN || _second!.isNaN)
-        return;
-      _result = (_first! / _second! * 1000).roundToDouble() / 1000;
-    });
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -82,75 +69,86 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Первое число',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateFirst(value);
+            Expanded(
+              // child: CustomPaint(
+              //   painter: TPainterU(_size, animation.value),
+              //   child: Container(),
+              // ),
+              child: AnimatedBuilder(
+                animation: animation,
+                builder: (context, snapshot) {
+                  return CustomPaint(
+                    painter: TPainterU(_size, animation.value),
+                    child: Container(),
+                  );
                 },
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Второе число',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (String value) {
-                  _updateSecond(value);
-                },
-              ),
+              padding: const EdgeInsets.only(left: 24.0),
+              child: Text('Размер', style: TextStyle(fontSize: 18),),
             ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ElevatedButton(
-                onPressed: _getSum,
-                style: ElevatedButton.styleFrom(
-                  textStyle: TextStyle(fontSize: 20),
-                ),
-                child: Text('Сложить'),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: _getDifference,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Вычесть'),
-            ),
-            ElevatedButton(
-              onPressed: _getMultiplication,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Умножить'),
-            ),
-            ElevatedButton(
-              onPressed: _getDivision,
-              style: ElevatedButton.styleFrom(
-                textStyle: TextStyle(fontSize: 20),
-              ),
-              child: Text('Разделить'),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                'Результат операции: $_result',
-                style: Theme.of(context).textTheme.headline5,
-              ),
+            Slider(
+              value: _size,
+              min: 25.0,
+              max: 180.0,
+              label: _size.toInt().toString(),
+              divisions: 25,
+              onChanged: (value) {
+                setState(() {
+                  _size = value;
+                });
+              },
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class TPainterU extends CustomPainter {
+  final double radius;
+  final double radians;
+
+  TPainterU(this.radius, this.radians);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    var greenPaint = Paint()
+      ..color = Colors.green
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    var blackPaint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    Offset center = Offset(size.width / 2 + math.sin(radians)*5000/radius, size.height / 2 + math.cos(radians)*5000/radius);
+
+    var greenPath = Path()
+    ..addRect(Rect.fromCenter(center: Offset(center.dx-radius*2/3, center.dy-radius*2/3), width: radius*2/3 - (radius / 10), height: radius*2/3 - (radius / 10)))
+    ..addRect(Rect.fromCenter(center: Offset(center.dx, center.dy-radius/3), width: radius*2/3 - (radius / 10), height: radius*4/3 - (radius / 10)))
+    ..addRect(Rect.fromCenter(center: Offset(center.dx+radius*2/3, center.dy-radius*2/3), width: radius*2/3 - (radius / 10), height: radius*2/3 - (radius / 10)));
+
+    var blackPath = Path()
+      ..addRect(Rect.fromCenter(center: Offset(center.dx-radius*2/3, center.dy+radius/3), width: radius*2/3 - (radius / 10), height: radius*4/3 - (radius / 10)))
+      ..addRect(Rect.fromCenter(center: Offset(center.dx, center.dy+radius*2/3), width: radius*2/3 - (radius / 10), height: radius*2/3 - (radius / 10)))
+      ..addRect(Rect.fromCenter(center: Offset(center.dx+radius*2/3, center.dy+radius/3), width: radius*2/3 - (radius / 10), height: radius*4/3 - (radius / 10)));
+
+    canvas.drawPath(greenPath, greenPaint);
+    canvas.drawPath(blackPath, blackPaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return true;
   }
 }
